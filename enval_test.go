@@ -30,28 +30,33 @@ const (
 	valCustom
 )
 
+// testVariables contains mock env variables to test
+// it should cover all possible cases
+var testVariables = map[string]string{
+	"STRING_PRESENT": ":80",
+	// "STRING_MISSING": "actually required",
+
+	"INT_PRESENT": "16",
+	"INT_INVALID": "b4dint34",
+	// "INT_MISSING":     "actually required",
+
+	"BOOL_PRESENT": "true",
+	"BOOL_INVALID": "nOTtRueOrFalsE",
+	// "BOOL_MISSING": "actually required",
+
+	"CUSTOM_PRESENT": `{"abc": 456}`,
+	"CUSTOM_INVALID": `}"abc": 456{`,
+	// "CUSTOM_MISSING": "actually required",
+}
+
+func testVariablesLookupFunc(key string) (string, bool) {
+	val, present := testVariables[key]
+	return val, present
+}
+
 func TestValuesAndErrors(t *testing.T) {
 	l := enval.NewLookuper()
-	vars := map[string]string{
-		"STRING_PRESENT": ":80",
-		// "STRING_MISSING": "actually required",
-
-		"INT_PRESENT": "16",
-		"INT_INVALID": "b4dint34",
-		// "INT_MISSING":     "actually required",
-
-		"BOOL_PRESENT": "true",
-		"BOOL_INVALID": "nOTtRueOrFalsE",
-		// "BOOL_MISSING": "actually required",
-
-		"CUSTOM_PRESENT": `{"abc": 456}`,
-		"CUSTOM_INVALID": `}"abc": 456{`,
-		// "CUSTOM_MISSING": "actually required",
-	}
-	l.LookupFunc = func(key string) (string, bool) {
-		val, present := vars[key]
-		return val, present
-	}
+	l.LookupFunc = testVariablesLookupFunc
 
 	tt := []struct {
 		key       string
@@ -119,26 +124,7 @@ func TestValuesAndErrors(t *testing.T) {
 
 func TestDefaults(t *testing.T) {
 	l := enval.NewLookuper()
-	vars := map[string]string{
-		"STRING_PRESENT": ":80",
-		// "STRING_MISSING": "actually required",
-
-		"INT_PRESENT": "16",
-		"INT_INVALID": "b4dint34",
-		// "INT_MISSING":     "actually required",
-
-		"BOOL_PRESENT": "true",
-		"BOOL_INVALID": "nOTtRueOrFalsE",
-		// "BOOL_MISSING": "actually required",
-
-		"CUSTOM_PRESENT": `{"abc": 456}`,
-		"CUSTOM_INVALID": `}"abc": 456{`,
-		// "CUSTOM_MISSING": "actually required",
-	}
-	l.LookupFunc = func(key string) (string, bool) {
-		val, present := vars[key]
-		return val, present
-	}
+	l.LookupFunc = testVariablesLookupFunc
 
 	type valStringDef struct{ expected, def string }
 	type valIntDef struct{ expected, def int }
@@ -211,26 +197,7 @@ func TestDefaults(t *testing.T) {
 
 func TestErr(t *testing.T) {
 	l := enval.NewLookuper()
-	vars := map[string]string{
-		"STRING_PRESENT": ":80",
-		// "STRING_MISSING": "actually required",
-
-		"INT_PRESENT": "16",
-		"INT_INVALID": "b4dint34",
-		// "INT_MISSING":     "actually required",
-
-		"BOOL_PRESENT": "true",
-		"BOOL_INVALID": "nOTtRueOrFalsE",
-		// "BOOL_MISSING": "actually required",
-
-		"CUSTOM_PRESENT": `{"abc": 456}`,
-		"CUSTOM_INVALID": `}"abc": 456{`,
-		// "CUSTOM_MISSING": "actually required",
-	}
-	l.LookupFunc = func(key string) (string, bool) {
-		val, present := vars[key]
-		return val, present
-	}
+	l.LookupFunc = testVariablesLookupFunc
 
 	tt := []struct {
 		key          string
