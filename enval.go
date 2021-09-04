@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -12,8 +13,9 @@ var (
 )
 
 type Lookuper struct {
-	ErrByVariable map[string]error
-	LookupFunc    func(key string) (string, bool)
+	ErrByVariable    map[string]error
+	VariablesWithErr []string
+	LookupFunc       func(key string) (string, bool)
 }
 
 func NewLookuper() *Lookuper {
@@ -123,17 +125,19 @@ func (l *Lookuper) CustomWithDefault(key string, def interface{}, pf ParseFunc) 
 
 func (l *Lookuper) addError(key string, err error) {
 	l.ErrByVariable[key] = err
+	l.VariablesWithErr = append(l.VariablesWithErr, key)
 }
 
 func (l *Lookuper) Err() error {
-	if l.ErrByVariable == nil {
+	if len(l.VariablesWithErr) == 0 {
 		return nil
 	}
 
-	var errStr string
-	for key, varErr := range l.ErrByVariable {
-		errStr += key + ":" + varErr.Error() + "\n"
+	var errTexts []string
+	for _, key := range l.VariablesWithErr {
+		err := l.ErrByVariable[key]
+		errTexts = append(errTexts, key+": "+err.Error())
 	}
 
-	return errors.New(errStr)
+	return errors.New(strings.Join(errTexts, ", "))
 }

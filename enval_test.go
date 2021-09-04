@@ -31,7 +31,7 @@ const (
 )
 
 func TestValuesAndErrors(t *testing.T) {
-	s := enval.NewLookuper()
+	l := enval.NewLookuper()
 	vars := map[string]string{
 		"STRING_PRESENT": ":80",
 		// "STRING_MISSING": "actually required",
@@ -48,7 +48,7 @@ func TestValuesAndErrors(t *testing.T) {
 		"CUSTOM_INVALID": `}"abc": 456{`,
 		// "CUSTOM_MISSING": "actually required",
 	}
-	s.LookupFunc = func(key string) (string, bool) {
+	l.LookupFunc = func(key string) (string, bool) {
 		val, present := vars[key]
 		return val, present
 	}
@@ -78,34 +78,34 @@ func TestValuesAndErrors(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.key, func(t *testing.T) {
 			if tc.valType == valString {
-				s := s.String(tc.key)
+				s := l.String(tc.key)
 				if s != tc.valString {
 					t.Fatalf("expected string value to be %s, got: %s", tc.valString, s)
 				}
 			}
 
 			if tc.valType == valInt {
-				i := s.Int(tc.key)
+				i := l.Int(tc.key)
 				if i != tc.valInt {
 					t.Fatalf("expected int value to be %d, got: %d", tc.valInt, i)
 				}
 			}
 
 			if tc.valType == valBool {
-				b := s.Bool(tc.key)
+				b := l.Bool(tc.key)
 				if b != tc.valBool {
 					t.Fatalf("expected bool value to be %t, got: %t", tc.valBool, b)
 				}
 			}
 
 			if tc.valType == valCustom {
-				v, ok := s.Custom(tc.key, abcParseFunc).(abc)
+				v, ok := l.Custom(tc.key, abcParseFunc).(abc)
 				if ok && v.Abc != tc.valCustom.Abc {
 					t.Fatalf("expected custom abc value to be %d, got: %d", tc.valCustom.Abc, v.Abc)
 				}
 			}
 
-			err := s.ErrByVariable[tc.key]
+			err := l.ErrByVariable[tc.key]
 			if !tc.hasErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -118,7 +118,7 @@ func TestValuesAndErrors(t *testing.T) {
 }
 
 func TestDefaults(t *testing.T) {
-	s := enval.NewLookuper()
+	l := enval.NewLookuper()
 	vars := map[string]string{
 		"STRING_PRESENT": ":80",
 		// "STRING_MISSING": "actually required",
@@ -135,7 +135,7 @@ func TestDefaults(t *testing.T) {
 		"CUSTOM_INVALID": `}"abc": 456{`,
 		// "CUSTOM_MISSING": "actually required",
 	}
-	s.LookupFunc = func(key string) (string, bool) {
+	l.LookupFunc = func(key string) (string, bool) {
 		val, present := vars[key]
 		return val, present
 	}
@@ -170,40 +170,112 @@ func TestDefaults(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.key, func(t *testing.T) {
 			if tc.valType == valString {
-				s := s.StringWithDefault(tc.key, tc.valString.def)
+				s := l.StringWithDefault(tc.key, tc.valString.def)
 				if s != tc.valString.expected {
 					t.Fatalf("expected string value to be %s, got: %s", tc.valString.expected, s)
 				}
 			}
 
 			if tc.valType == valInt {
-				i := s.IntWithDefault(tc.key, tc.valInt.def)
+				i := l.IntWithDefault(tc.key, tc.valInt.def)
 				if i != tc.valInt.expected {
 					t.Fatalf("expected int value to be %d, got: %d", tc.valInt.expected, i)
 				}
 			}
 
 			if tc.valType == valBool {
-				b := s.BoolWithDefault(tc.key, tc.valBool.def)
+				b := l.BoolWithDefault(tc.key, tc.valBool.def)
 				if b != tc.valBool.expected {
 					t.Fatalf("expected bool value to be %t, got: %t", tc.valBool.expected, b)
 				}
 			}
 
 			if tc.valType == valCustom {
-				v, ok := s.CustomWithDefault(tc.key, tc.valCustom.def, abcParseFunc).(abc)
+				v, ok := l.CustomWithDefault(tc.key, tc.valCustom.def, abcParseFunc).(abc)
 				if ok && v.Abc != tc.valCustom.expected.Abc {
 					t.Fatalf("expected custom abc value to be %d, got: %d", tc.valCustom.expected.Abc, v.Abc)
 				}
 			}
 
-			err := s.ErrByVariable[tc.key]
+			err := l.ErrByVariable[tc.key]
 			if !tc.hasErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
 			if tc.hasErr && err == nil {
 				t.Fatalf("expected error here")
+			}
+		})
+	}
+}
+
+func TestErr(t *testing.T) {
+	l := enval.NewLookuper()
+	vars := map[string]string{
+		"STRING_PRESENT": ":80",
+		// "STRING_MISSING": "actually required",
+
+		"INT_PRESENT": "16",
+		"INT_INVALID": "b4dint34",
+		// "INT_MISSING":     "actually required",
+
+		"BOOL_PRESENT": "true",
+		"BOOL_INVALID": "nOTtRueOrFalsE",
+		// "BOOL_MISSING": "actually required",
+
+		"CUSTOM_PRESENT": `{"abc": 456}`,
+		"CUSTOM_INVALID": `}"abc": 456{`,
+		// "CUSTOM_MISSING": "actually required",
+	}
+	l.LookupFunc = func(key string) (string, bool) {
+		val, present := vars[key]
+		return val, present
+	}
+
+	tt := []struct {
+		key          string
+		valType      valType
+		errTextDelta string
+	}{
+		{key: "STRING_PRESENT", valType: valString},
+		{key: "STRING_MISSING", valType: valString, errTextDelta: "STRING_MISSING: key missing"},
+		{key: "INT_PRESENT", valType: valInt},
+		{key: "INT_INVALID", valType: valInt, errTextDelta: `, INT_INVALID: unparsable int: strconv.ParseInt: parsing "b4dint34": invalid syntax`},
+		{key: "INT_MISSING", valType: valInt, errTextDelta: `, INT_MISSING: key missing`},
+		{key: "BOOL_PRESENT", valType: valBool},
+		{key: "BOOL_INVALID", valType: valBool, errTextDelta: `, BOOL_INVALID: unparsable bool: strconv.ParseBool: parsing "nOTtRueOrFalsE": invalid syntax`},
+		{key: "BOOL_MISSING", valType: valBool, errTextDelta: `, BOOL_MISSING: key missing`},
+		{key: "CUSTOM_PRESENT", valType: valCustom},
+		{key: "CUSTOM_INVALID", valType: valCustom, errTextDelta: `, CUSTOM_INVALID: invalid character '}' looking for beginning of value`},
+		{key: "CUSTOM_MISSING", valType: valCustom, errTextDelta: `, CUSTOM_MISSING: key missing`},
+	}
+
+	var errText string
+	for _, tc := range tt {
+		t.Run(tc.key, func(t *testing.T) {
+			switch tc.valType {
+			case valString:
+				l.String(tc.key)
+			case valInt:
+				l.Int(tc.key)
+			case valBool:
+				l.Bool(tc.key)
+			case valCustom:
+				l.Custom(tc.key, abcParseFunc)
+			}
+
+			errText += tc.errTextDelta
+
+			err := l.Err()
+			if err == nil && errText != "" {
+				t.Log("expected:\n", errText)
+				t.Fatalf("expected to have error, got nil")
+			}
+
+			if err != nil && errText != err.Error() {
+				t.Log("expected:\n", errText)
+				t.Log("actual:\n", err)
+				t.Fatalf("error texts are not equal")
 			}
 		})
 	}
