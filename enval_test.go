@@ -2,6 +2,7 @@ package enval_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/ulexxander/enval"
@@ -205,16 +206,16 @@ func TestErr(t *testing.T) {
 		errTextDelta string
 	}{
 		{key: "STRING_PRESENT", valType: valString},
-		{key: "STRING_MISSING", valType: valString, errTextDelta: "STRING_MISSING: key missing"},
+		{key: "STRING_MISSING", valType: valString, errTextDelta: "STRING_MISSING: variable missing"},
 		{key: "INT_PRESENT", valType: valInt},
 		{key: "INT_INVALID", valType: valInt, errTextDelta: `, INT_INVALID: unparsable int: strconv.ParseInt: parsing "b4dint34": invalid syntax`},
-		{key: "INT_MISSING", valType: valInt, errTextDelta: `, INT_MISSING: key missing`},
+		{key: "INT_MISSING", valType: valInt, errTextDelta: `, INT_MISSING: variable missing`},
 		{key: "BOOL_PRESENT", valType: valBool},
 		{key: "BOOL_INVALID", valType: valBool, errTextDelta: `, BOOL_INVALID: unparsable bool: strconv.ParseBool: parsing "nOTtRueOrFalsE": invalid syntax`},
-		{key: "BOOL_MISSING", valType: valBool, errTextDelta: `, BOOL_MISSING: key missing`},
+		{key: "BOOL_MISSING", valType: valBool, errTextDelta: `, BOOL_MISSING: variable missing`},
 		{key: "CUSTOM_PRESENT", valType: valCustom},
 		{key: "CUSTOM_INVALID", valType: valCustom, errTextDelta: `, CUSTOM_INVALID: invalid character '}' looking for beginning of value`},
-		{key: "CUSTOM_MISSING", valType: valCustom, errTextDelta: `, CUSTOM_MISSING: key missing`},
+		{key: "CUSTOM_MISSING", valType: valCustom, errTextDelta: `, CUSTOM_MISSING: variable missing`},
 	}
 
 	var errText string
@@ -246,4 +247,48 @@ func TestErr(t *testing.T) {
 			}
 		})
 	}
+}
+
+var exampleVariables = map[string]string{
+	"POSTGRES_HOST": "localhost",
+	// "POSTGRES_PORT": "this variable will have default",
+	"POSTGRES_USERNAME": "somedev",
+	// "POSTGRES_PASSWORD": "this variable is missing",
+	"MAINTENANCE_MODE":        "true",
+	"MAX_CONCURRENT_REQUESTS": "q123", // this variable has invalid format
+}
+
+func exampleVariablesLookupFunc(key string) (string, bool) {
+	val, present := exampleVariables[key]
+	return val, present
+}
+
+func ExampleLookuper() {
+	l := enval.NewLookuper()
+	// no need to override LookupFunc in your code
+	// NewLookuper sets it to os.LookupEnv
+	l.LookupFunc = exampleVariablesLookupFunc
+
+	type config struct {
+		PostgresHost          string
+		PostgresPort          int
+		PostgresUsername      string
+		PostgresPassword      string
+		MaintenanceMode       bool
+		MaxConcurrentRequests int
+	}
+
+	_ = config{
+		PostgresHost:          l.String("POSTGRES_HOST"),
+		PostgresPort:          l.IntWithDefault("POSTGRES_PORT", 5432),
+		PostgresUsername:      l.String("POSTGRES_USERNAME"),
+		PostgresPassword:      l.String("POSTGRES_PASSWORD"),
+		MaintenanceMode:       l.Bool("MAINTENANCE_MODE"),
+		MaxConcurrentRequests: l.IntWithDefault("MAX_CONCURRENT_REQUESTS", 64),
+	}
+
+	if err := l.Err(); err != nil {
+		fmt.Println(err)
+	}
+	// Output: POSTGRES_PASSWORD: variable missing, MAX_CONCURRENT_REQUESTS: unparsable int: strconv.ParseInt: parsing "q123": invalid syntax
 }

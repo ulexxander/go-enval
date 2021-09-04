@@ -9,13 +9,18 @@ import (
 )
 
 var (
-	ErrMissing = errors.New("key missing")
+	ErrMissing = errors.New("variable missing")
 )
 
 type Lookuper struct {
-	ErrByVariable    map[string]error
+	// ErrByVariable contains errors related to variable keys
+	ErrByVariable map[string]error
+	// VariablesWithErr used to save the order in which
+	// variables having errors were read
 	VariablesWithErr []string
-	LookupFunc       func(key string) (string, bool)
+	// LookupFunc is used to get variable value by key
+	// can be overriden
+	LookupFunc func(key string) (string, bool)
 }
 
 func NewLookuper() *Lookuper {
