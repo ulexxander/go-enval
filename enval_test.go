@@ -256,6 +256,8 @@ var exampleVariables = map[string]string{
 	// "POSTGRES_PASSWORD": "this variable is missing",
 	"MAINTENANCE_MODE":        "true",
 	"MAX_CONCURRENT_REQUESTS": "q123", // this variable has invalid format
+	"LOG_LEVEL":               "WARN",
+	"LOG_LEVEL_INVALID_ONE":   "DEBUGGIN",
 }
 
 func exampleVariablesLookupFunc(key string) (string, bool) {
@@ -291,4 +293,44 @@ func ExampleLookuper() {
 		fmt.Println(err)
 	}
 	// Output: POSTGRES_PASSWORD: variable missing, MAX_CONCURRENT_REQUESTS: unparsable int: strconv.ParseInt: parsing "q123": invalid syntax
+}
+
+func ExampleParseFunc() {
+	l := enval.NewLookuper()
+	// no need to override LookupFunc in your code
+	// NewLookuper sets it to os.LookupEnv
+	l.LookupFunc = exampleVariablesLookupFunc
+
+	type logLevel string
+
+	const (
+		INFO  logLevel = "INFO"
+		WARN  logLevel = "WARN"
+		ERROR logLevel = "ERROR"
+	)
+
+	pf := func(val string) (interface{}, error) {
+		switch logLevel(val) {
+		case INFO:
+			return INFO, nil
+		case WARN:
+			return WARN, nil
+		case ERROR:
+			return ERROR, nil
+		default:
+			return logLevel(""), fmt.Errorf("unknown log level: %s", val)
+		}
+	}
+
+	level1 := l.Custom("LOG_LEVEL", pf).(logLevel)
+	level2 := l.CustomWithDefault("LOG_LEVEL_WITH_DEFAULT", INFO, pf).(logLevel)
+	_ = l.CustomWithDefault("LOG_LEVEL_INVALID_ONE", INFO, pf).(logLevel)
+	fmt.Println(level1, level2)
+
+	if err := l.Err(); err != nil {
+		fmt.Println(err)
+	}
+	// Output:
+	// WARN INFO
+	// LOG_LEVEL_INVALID_ONE: unknown log level: DEBUGGIN
 }

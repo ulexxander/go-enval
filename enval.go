@@ -123,7 +123,7 @@ func (l *Lookuper) CustomWithDefault(key string, def interface{}, pf ParseFunc) 
 	valParsed, err := pf(val)
 	if err != nil {
 		l.addError(key, err)
-		return nil
+		return valParsed
 	}
 	return valParsed
 }
